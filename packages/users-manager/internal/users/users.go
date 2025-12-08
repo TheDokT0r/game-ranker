@@ -1,18 +1,16 @@
 package users
 
 import (
+	"game-ranker/users-manager/internal"
+	"game-ranker/users-manager/internal/database"
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type User struct {
-	ID         string
-	Username   string
-	Email      string
-	HashedPass string
-}
+type User = internal.User
 
 type RegisterRequest struct {
 	Username string
@@ -38,5 +36,8 @@ func RegisterAccount(c *gin.Context) {
 		Username:   body.Username,
 		HashedPass: hashedPassword,
 		Email:      body.Email,
+		ID:         uuid.NewString(),
 	}
+
+	database.AddUser(user)
 }

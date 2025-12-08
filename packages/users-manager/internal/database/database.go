@@ -3,11 +3,14 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"game-ranker/users-manager/internal"
 	"log"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
+
+type User = internal.User
 
 // Will only create the DB table if it doesn't exist
 func InitDbTable() {
@@ -43,6 +46,21 @@ func Connect() *sql.DB {
 
 func Close(db *sql.DB) {
 	err := db.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func AddUser(user User) {
+	db := Connect()
+	defer Close(db)
+
+	sqlStmt := `
+		INSERT INTO users (public_id, username, pass, email)
+		VALUES (?, ?, ?, ?)
+	`
+
+	_, err := db.Exec(sqlStmt, user.ID, user.Username, user.HashedPass, user.Email)
 	if err != nil {
 		log.Fatal(err)
 	}
