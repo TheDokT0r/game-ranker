@@ -51,7 +51,7 @@ func Close(db *sql.DB) {
 	}
 }
 
-func AddUser(user User) {
+func AddUser(user User) error {
 	db := Connect()
 	defer Close(db)
 
@@ -62,6 +62,8 @@ func AddUser(user User) {
 
 	_, err := db.Exec(sqlStmt, user.ID, user.Username, user.HashedPass, user.Email)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
