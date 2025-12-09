@@ -41,7 +41,7 @@ func RegisterAccount(c *gin.Context) {
 
 	hashedPassword, err := hashPassword(body.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -55,7 +55,7 @@ func RegisterAccount(c *gin.Context) {
 
 	err = database.AddUser(user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

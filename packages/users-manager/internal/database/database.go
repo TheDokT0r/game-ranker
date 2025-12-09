@@ -57,11 +57,11 @@ func AddUser(user User) error {
 	defer Close(db)
 
 	sqlStmt := `
-		INSERT INTO users (public_id, username, pass, email)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO users (public_id, username, pass, email, role)
+		VALUES (?, ?, ?, ?, ?)
 	`
 
-	_, err := db.Exec(sqlStmt, user.ID, user.Username, user.HashedPass, user.Email)
+	_, err := db.Exec(sqlStmt, user.ID, user.Username, user.HashedPass, user.Email, user.Role)
 	if err != nil {
 		return err
 	}

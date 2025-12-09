@@ -22,7 +22,7 @@ func CreateJwtSingedToken(user User) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	secret, present := os.LookupEnv("SECRET")
 	if !present {
-		log.Fatal("Mkae sure you've set all of your enviorment variables")
+		log.Fatal("Make sure you've set all of your enviorment variables")
 	}
 
 	signed, err := token.SignedString([]byte(secret))
@@ -31,4 +31,13 @@ func CreateJwtSingedToken(user User) string {
 	}
 
 	return signed
+}
+
+func getSecret() string {
+	secret, present := os.LookupEnv("SECRET")
+	if !present {
+		log.Fatal("Make sure you've set all of your enviorment variables")
+	}
+
+	return secret
 }
