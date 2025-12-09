@@ -23,7 +23,8 @@ func InitDbTable() {
 		public_id TEXT NOT NULL UNIQUE,
 		username TEXT NOT NULL,
 		pass TEXT NOT NULL,
-		email TEXT NOT NULL
+		email TEXT NOT NULL,
+		role TEXT NOT NULL
 	);
 	`
 
@@ -66,4 +67,22 @@ func AddUser(user User) error {
 	}
 
 	return nil
+}
+
+func GetUser(email string) (*User, error) {
+	db := Connect()
+	sqlStmt := `
+		SELECT public_id, username, pass, email, role
+		FROM users
+		WHERE email = ?
+	`
+
+	row := db.QueryRow(sqlStmt, email)
+	var user User
+	err := row.Scan(&user.ID, &user.Username, &user.HashedPass, &user.Email, &user.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

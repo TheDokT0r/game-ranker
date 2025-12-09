@@ -3,10 +3,7 @@ package users
 import (
 	"game-ranker/users-manager/internal"
 	"game-ranker/users-manager/internal/database"
-	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -25,6 +22,7 @@ type RegisterRequest struct {
 type JwtClaims struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
+	Role     string `json:"role"`
 
 	jwt.RegisteredClaims
 }
@@ -52,6 +50,7 @@ func RegisterAccount(c *gin.Context) {
 		HashedPass: hashedPassword,
 		Email:      body.Email,
 		ID:         uuid.NewString(),
+		Role:       "user",
 	}
 
 	err = database.AddUser(user)
@@ -60,29 +59,10 @@ func RegisterAccount(c *gin.Context) {
 		return
 	}
 
-	claims := JwtClaims{
-		Email:    user.Email,
-		Username: user.Username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 1, 0)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	secret, present := os.LookupEnv("SECRET")
-	if !present {
-		log.Fatal("Make sure you've set all of your environment variables")
-	}
-
-	signed, err := token.SignedString([]byte(secret))
-	if err != nil {
-		log.Panic(err)
-	}
+	signedToken := CreateJwtSingedToken(user)
 
 	c.JSON(http.StatusOK, gin.H{
-		"jwt": signed,
+		"jwt": signedToken,
 	})
 }
 
@@ -98,6 +78,22 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
+	user, err := database.GetUser(body.Email)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid information"})
+		return
+	}
+
+	err = checkPasswordHash(user.HashedPass, body.Password)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid information"})
+		return
+	}
+
+	signedToken := CreateJwtSingedToken(*user)
+
+	c.JSON(http.StatusOK, gin.H{"jwt": signedToken})
 }
 
 func hashPassword(plain string) (string, error) {
