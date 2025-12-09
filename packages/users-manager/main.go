@@ -18,6 +18,10 @@ func main() {
 		users.RegisterAccount(ctx)
 	})
 
+	r.POST("/login", func(ctx *gin.Context) {
+		users.Login(ctx)
+	})
+
 	auth := r.Group("/auth")
 	auth.Use(users.AuthMiddleware())
 

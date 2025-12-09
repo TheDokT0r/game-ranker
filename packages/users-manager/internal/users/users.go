@@ -67,8 +67,8 @@ func RegisterAccount(c *gin.Context) {
 }
 
 type LoginInfo struct {
-	Email    string
-	Password string
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func Login(c *gin.Context) {
