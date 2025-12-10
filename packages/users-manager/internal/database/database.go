@@ -1,85 +1,117 @@
 package database
 
 import (
-	"database/sql"
-	"fmt"
+	"context"
 	"game-ranker/users-manager/internal"
 	"log"
+	"os"
 
-	_ "github.com/ncruces/go-sqlite3/driver"
-	_ "github.com/ncruces/go-sqlite3/embed"
+	"github.com/jackc/pgx/v5"
 )
 
 type User = internal.User
 
-// Will only create the DB table if it doesn't exist
 func InitDbTable() {
-	fmt.Println("Initiating table")
-	db := Connect()
+	dbUrl, present := os.LookupEnv("DATABASE_URL")
+	if !present {
+		log.Fatal("Invalid DATABASE_URL env variable")
+	}
+
+	ctx := context.Background()
+
+	conn, err := pgx.Connect(ctx, dbUrl)
+	if err != nil {
+		log.Fatal("Failed to connect to DB:", err)
+	}
+	defer conn.Close(ctx)
+
+	_, err = conn.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pgcrypto;`)
+	if err != nil {
+		log.Fatalf("Unable to enable pgcrypto extension: %v", err)
+	}
 
 	sqlStmt := `
 	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		public_id TEXT NOT NULL UNIQUE,
+		id SERIAL PRIMARY KEY,
+		public_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
 		username TEXT NOT NULL,
 		pass TEXT NOT NULL,
-		email TEXT NOT NULL,
+		email TEXT NOT NULL UNIQUE,
 		role TEXT NOT NULL
 	);
 	`
 
-	_, err := db.Exec(sqlStmt)
-	if err != nil {
-		log.Fatal("Failed to create table:", err)
+	if _, err = conn.Exec(ctx, sqlStmt); err != nil {
+		log.Fatal("Failed to create users table:", err)
 	}
 
-	defer Close(db)
+	log.Println("Users table initialized")
 }
 
-func Connect() *sql.DB {
-	db, err := sql.Open("sqlite3", "./app.db")
-	if err != nil {
-		log.Fatal(err)
+func Connect() *pgx.Conn {
+	dbUrl, present := os.LookupEnv("DATABASE_URL")
+	if !present {
+		log.Fatal("Invalid DATABASE_URL env variable")
 	}
 
-	return db
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, dbUrl)
+	if err != nil {
+		log.Fatal("DB connection failed:", err)
+	}
+
+	return conn
 }
 
-func Close(db *sql.DB) {
-	err := db.Close()
+func Close(conn *pgx.Conn) {
+	err := conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("DB close failed:", err)
 	}
 }
 
 func AddUser(user User) error {
-	db := Connect()
-	defer Close(db)
+	conn := Connect()
+	defer Close(conn)
+
+	ctx := context.Background()
 
 	sqlStmt := `
-		INSERT INTO users (public_id, username, pass, email, role)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO users (username, pass, email, role)
+		VALUES ($1, $2, $3, $4)
+		RETURNING public_id;
 	`
 
-	_, err := db.Exec(sqlStmt, user.ID, user.Username, user.HashedPass, user.Email, user.Role)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return conn.QueryRow(ctx, sqlStmt,
+		user.Username,
+		user.HashedPass,
+		user.Email,
+		user.Role,
+	).Scan(&user.ID)
 }
 
 func GetUser(email string) (*User, error) {
-	db := Connect()
+	conn := Connect()
+	defer Close(conn)
+
+	ctx := context.Background()
+
 	sqlStmt := `
 		SELECT public_id, username, pass, email, role
 		FROM users
-		WHERE email = ?
+		WHERE email = $1;
 	`
 
-	row := db.QueryRow(sqlStmt, email)
 	var user User
-	err := row.Scan(&user.ID, &user.Username, &user.HashedPass, &user.Email, &user.Role)
+
+	err := conn.QueryRow(ctx, sqlStmt, email).Scan(
+		&user.ID,
+		&user.Username,
+		&user.HashedPass,
+		&user.Email,
+		&user.Role,
+	)
+
 	if err != nil {
 		return nil, err
 	}

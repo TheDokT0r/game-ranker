@@ -1,6 +1,7 @@
 import ky from "ky";
 import Fastify from "fastify";
 import "@dotenvx/dotenvx/config";
+import { initTable } from "./database.js";
 
 async function getAccessToken() {
   const clientId = process.env.TWITCH_CLIENT_ID;
@@ -19,10 +20,13 @@ async function getAccessToken() {
 }
 
 const token = await getAccessToken();
+console.log("Got access token")
 
 const fastify = Fastify({
   logger: true,
-  ignoreTrailingSlash: true
+  routerOptions: {
+    ignoreTrailingSlash: true,
+  }
 });
 
 fastify.get("/", async function handler(reqest, reply) {
@@ -31,7 +35,6 @@ fastify.get("/", async function handler(reqest, reply) {
 
 fastify.get<{ Querystring: { name: string } }>("/game-data", async (request, reply) => {
   const { name } = request.query;
-  const token = await getAccessToken();
   const clientId = process.env.TWITCH_CLIENT_ID;
 
   const igdbResponse = await ky.post("https://api.igdb.com/v4/games", {
@@ -57,8 +60,9 @@ fastify.get<{ Querystring: { name: string } }>("/game-data", async (request, rep
   return { games };
 });
 
-
-
+console.log("generating db...");
+await initTable();
+console.log("finished!");
 
 const port = Number(process.env.PORT);
 
