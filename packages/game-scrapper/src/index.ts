@@ -1,4 +1,3 @@
-import ky from "ky";
 import Fastify from "fastify";
 import "@dotenvx/dotenvx/config";
 import { initTable, searchGames } from "./database.js";
